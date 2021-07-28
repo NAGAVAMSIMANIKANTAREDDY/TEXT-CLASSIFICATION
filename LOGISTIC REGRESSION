@@ -1,0 +1,102 @@
+#logistic regression
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set()
+
+import statsmodels.api as sm
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+raw_data = pd.read_csv('Social_Network_Ads.csv')
+raw_data.head()
+raw_data.describe(include='all')
+
+#REMOVE USERID
+
+data_no_userid = raw_data.drop(columns=["User ID"], axis = 1)
+data_no_userid.describe(include='all')
+fig, ax = plt.subplots(figsize = (10, 6))
+
+sns.scatterplot(ax=ax, 
+                data=data_no_userid, 
+                x="EstimatedSalary", 
+                y="Age", 
+                hue="Purchased")
+plt.show()
+
+#MAP MALE TO 1 AND FEMALE TO 0
+
+data_no_userid["Gender"].unique()
+gender = ['Male', 'Female']
+from sklearn.preprocessing import LabelEncoder
+le = LabelEncoder()
+le = le.fit(gender)
+data_with_dummies = data_no_userid.copy()
+data_with_dummies["Gender"] = le.fit_transform(data_with_dummies["Gender"])
+data_with_dummies.info()
+groupbyGender = pd.DataFrame(data=data_no_userid.groupby(by=["Gender"]).Purchased.sum()).reset_index()
+sns.barplot(data=groupbyGender, x="Gender", y="Purchased")
+plt.show()
+
+#Define independent and dependent variable
+
+y = data_with_dummies["Purchased"]
+x1 = data_with_dummies.drop(columns=["Purchased"], axis=1)
+
+#Using sm logit regression
+
+x = sm.add_constant(x1)
+reg_log = sm.Logit(y,x)
+results_log = reg_log.fit()
+results_log.summary()
+
+#check accuracy
+
+pred_corr = results_log.pred_table()[0, 0] + results_log.pred_table()[1, 1]
+pred_incorr = results_log.pred_table()[0, 1] + results_log.pred_table()[1, 0]
+total = results_log.pred_table().sum()
+
+accuracy = pred_corr/total*100
+print("Accuracy of the model is %.2f" %(accuracy) + '%')
+
+#Check Logit Regression after Standardisation
+
+y = data_with_dummies["Purchased"]
+x1 = data_with_dummies.drop(columns=["Purchased"], axis=1)
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler(feature_range=(0,1))
+x1_scaled = scaler.fit_transform(x1)
+x1_scaled
+x = sm.add_constant(x1_scaled)
+reg_log = sm.Logit(y,x)
+results_log = reg_log.fit()
+results_log.summary()
+#ACCURACY
+pred_corr = results_log.pred_table()[0, 0] + results_log.pred_table()[1, 1]
+pred_incorr = results_log.pred_table()[0, 1] + results_log.pred_table()[1, 0]
+total = results_log.pred_table().sum()
+
+accuracy = pred_corr/total*100
+print("Accuracy of the model is %.2f" %(accuracy) + '%')
+
+#Split dataset in Train & Test
+
+x_train, x_test, y_train, y_test = train_test_split(x1_scaled, y, test_size=0.2, random_state = 42)
+
+model = LogisticRegression()
+model.fit(x_train, y_train)
+y_pred = model.predict(x_test)
+y_pred
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+cm = confusion_matrix(y_test, y_pred)
+pred_corr = cm[0, 0] + cm[1, 1]
+pred_incorr = cm[0, 1] + cm[1, 0]
+total = cm.sum()
+
+accuracy = pred_corr/total*100
+print("Accuracy of the model is %.2f" %(accuracy) + '%')
+acc_score = accuracy_score(y_test, y_pred)
+print("Accuracy score is %.2f" %(acc_score*100)+ '%')
+classification_report(y_test, y_pred)
