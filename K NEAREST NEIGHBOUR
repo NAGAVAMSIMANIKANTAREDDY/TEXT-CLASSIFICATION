@@ -1,0 +1,76 @@
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+#READ DATA
+data = pd.read_csv("column_2C_weka.csv")
+data.head()
+
+#VISUALIZATION
+
+f,ax = plt.subplots(figsize=(10, 10))
+sns.heatmap(data.corr(), annot=True, linewidths=.5, fmt= '.1f',ax=ax)
+plt.title("Corrolation Map")
+plt.show()
+data["class"].value_counts()
+
+sns.countplot(data["class"], palette="Set2")
+plt.title("Amount")
+plt.show()
+
+sns.pairplot(data=data, hue="class")
+plt.show()
+
+#DATA PREPROCESSING
+
+data["class"] = [0 if i == "Abnormal" else 1 for i in data["class"]]
+y = data["class"].values
+x_data = data.drop(["class"], axis=1)
+x = (x_data - np.min(x_data))/(np.max(x_data) - np.min(x_data)).values
+x
+
+#KNN MODEL
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(x,y, test_size=0.2, random_state=11)
+
+from sklearn.neighbors import KNeighborsClassifier
+knn = KNeighborsClassifier(n_neighbors = 5) #k value
+knn.fit(x_train, y_train)
+print(" {} nn score: {} ".format(5,knn.score(x_test,y_test))
+
+score_list = []
+for i in range(1,20):
+    knn2 = KNeighborsClassifier(n_neighbors = i)
+    knn2.fit(x_train, y_train)
+    score_list.append(knn2.score(x_test, y_test))
+score_list
+current_max = score_list[0]
+for i in range(len(score_list)):
+    if current_max < score_list[i]:
+        current_max = score_list[i]
+current_max
+plt.plot(range(1,20),score_list)
+plt.xlabel("k values")
+plt.ylabel("Accuracy")
+plt.show()
+
+knn3 = KNeighborsClassifier(n_neighbors = 8) #k value
+knn3.fit(x_train, y_train)
+print(" {} nn score: {} ".format(8,knn3.score(x_test,y_test)))
+
+y_pred_knn = knn3.predict(x_test)
+from sklearn.metrics import confusion_matrix
+cm = confusion_matrix(y_test, y_pred_knn)
+print("KNN result confusion matrix : \n", cm)
+
+#confusion metrics visualization
+f, ax = plt.subplots(figsize=(5,5))
+sns.heatmap(cm, annot=True, linewidths=0.5, linecolor="red", fmt=".0f", ax=ax)
+plt.xlabel("Prediction")
+plt.ylabel("Real")
+plt.show()
